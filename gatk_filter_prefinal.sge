@@ -1,0 +1,75 @@
+#!/bin/bash
+
+#gatk_filter_prefinal.sge
+#sge submission script for basic filtering of vcf to remove junk and generate table for thresholding
+#M. Supple
+#last updated 29 August 2016
+
+#usage  
+#qsub gatk_filter_prefinal.sge <vcf> <path/to/reference/ref.fa>
+	#<vcf> is an input vcf to be filtered
+	#<path/to/reference/ref.fa> is the reference sequence
+
+#requires 
+#gatk
+
+#output
+#vcf with basic filtered SNPs
+
+
+
+#sge submission info
+#$ -N gatk_filter_prefinal
+#$ -o gatk_filter_prefinal.output
+#$ -l virtual_free=20g,h_vmem=20.1g
+#$ -cwd
+#$ -j y
+
+
+
+#print some sge info
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+#read in input
+vcf=$1
+reference=$2
+
+#subset for just SNPs
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+	-T SelectVariants \
+	-R $reference \
+	-V $vcf \
+	-selectType SNP \
+	-o ${vcf%.vcf}.SNPs.vcf
+
+#filter with "default" values and remove sites with no variation relative to the reference
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+	-T VariantFiltration \
+	-R $reference \
+	-V ${vcf%.vcf}.SNPs.vcf \
+       -filter "AF == 1.0" \
+        -filterName "maxMAF" \
+	-o ${vcf%.vcf}.SNPs.prefilt.vcf
+
+#remove non-biallelic and failed loci from file
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+       -T SelectVariants \
+       -R $reference \
+       -V ${vcf%.vcf}.SNPs.prefilt.vcf \
+	--excludeFiltered \
+	--restrictAllelesTo BIALLELIC \
+       -o ${vcf%.vcf}.SNPs.prefilt.pass.vcf
+
+#make table of values for thresholding
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+       -T VariantsToTable \
+       -R $reference \
+       -V ${vcf%.vcf}.SNPs.prefilt.pass.vcf \
+       -F CHROM -F POS -F QUAL -F AF -F ExcessHet -F InbreedingCoeff -F MQ -F MQRankSum -F QD \
+       -F HET -F HOM-REF -F HOM-VAR -F NO-CALL -F NCALLED \
+	--allowMissingData \
+       -o stats.table
+
+#print note that job completed
+echo done `date`
+

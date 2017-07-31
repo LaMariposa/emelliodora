@@ -1,0 +1,87 @@
+#!/bin/bash
+
+#bwa_gvcf_array.sge
+#sge submission script to run a job array of bwa alignments and gatk single sample variant calling
+#M. Supple
+#last modified 11 August 2016
+
+#usage
+#qsub bwa_gvcf_array.sge </path/to/in/fastqs/dir/> <path/to/reference/ref.fa>
+        #</path/to/in/fastqs/dir/> is a directory with the input fastq files
+        #<path/to/reference/ref.fa> is the reference sequence
+                #with index (see prep_ref.sge to index the reference)
+
+#note see hardcoded parameters below, including number of threads
+#modify #$ -t 1-81 for number of jobs in array
+
+#requires
+#bwa
+#samtools
+#gatk
+
+#output
+#bam and gVCF for each sample
+
+
+
+#$ -N bwa_gvcf
+#$ -o bwa_gvcf.out
+#$ -pe threads 6
+#$ -l virtual_free=3.5g,h_vmem=3.6g
+#$ -cwd
+#$ -j y
+#$ -t 1-376
+#$ -tc 20
+
+
+#print some sge info
+echo Job number $SGE_TASK_ID in $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+
+#gatk parameters
+het=0.005
+indelhet=.0005
+cov=4
+
+#get input information
+fastqdir=$1
+reference=$2
+
+#get whole sample list
+samples=($(ls $fastqdir/clean_qc_S*_il.fastq.gz))
+
+
+#process sample, make 0 index happy
+i=$(expr $SGE_TASK_ID - 1)
+echo processing sample ${samples[$i]}
+
+#get sample ID
+tempfile=`basename ${samples[$i]}`
+tempid=${tempfile%_il.fastq.gz}
+sampleID=${tempid#clean_qc_}
+echo $sampleID > $sampleID.out 2>&1
+
+#align with bwa as paired end interleaved
+bwa mem -p -t 6 -M -R "@RG\tID:$sampleID\tSM:$sampleID\tPL:Illumina" $reference ${samples[$i]} > $sampleID.sam 2>> $sampleID.out
+	#p indicates paired interleaved file
+        #M treats shorter split hits as secondary to make picard markdups happy
+        #t number of threads
+        #R read group info
+
+#index
+samtools view -b -o $sampleID.temp.bam $sampleID.sam 2>> $sampleID.out
+samtools sort -o $sampleID.bam $sampleID.temp.bam 2>> $sampleID.out
+samtools index $sampleID.bam 2>> $sampleID.out
+
+#call variants with gatk in gvcf mode
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+	-T HaplotypeCaller \
+        -hets $het -indelHeterozygosity $indelhet -minReadsPerAlignStart $cov \
+        -R $reference \
+        -I $sampleID.bam \
+        --emitRefConfidence GVCF \
+        -o $sampleID.g.vcf >> $sampleID.out 2>&1
+
+
+#print note that job completed
+echo Job number $SGE_TASK_ID in $JOB_NAME done `date`

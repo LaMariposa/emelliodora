@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#prep_gbs.sge
+#sge submission script to run qc pipeline on raw sequencing reads
+#M. Supple
+#last modified 1 July 2015
+
+#usage
+#qsub prep_gbs.sge <prep.input>
+#<prep.input>:  see prep.example.input or example at end of this script
+
+#requires
+#axe
+#trimmit
+#load_lane.sh
+
+#output
+#filtered interleaved fastq file for each sample
+#various qc reports
+
+
+
+#$ -N prep_gbs
+#$ -o prep_gbs.output
+#$ -pe threads 11
+#$ -l virtual_free=1.8g,h_vmem=1.9g
+#$ -cwd
+#$ -j y
+
+
+
+#print some sge info
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+#read the input file
+source $1
+
+#run the demultiplex and cleaning pipeline
+bash /borevitz/gbs/code/load_lane.sh  $threads $user $lane_name $barcode_file $file1 $file2
+
+#print note that job completed
+echo done `date`
+
+
+##example input file for qc and prepping reads
+#
+##input fastq files
+#file1=/PATH/TO/FASTQ/FILE/sample_R1_001.fastq.gz
+#file2=/PATH/TO/FASTQ/FILE/sample_R2_001.fastq.gz
+#
+##sequencing and sample information
+#lane_name=LANE_NAME
+#barcode_file=LANE_BARCODES.tab
+#
+##user group for output
+#user=Eucalyptus
+#
+##number of threads to use
+#threads=11

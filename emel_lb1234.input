@@ -1,0 +1,24 @@
+#input file for prepping the 4 plates of trees from linda
+
+#input fastq files
+file1=/home/gdu/projects/borevitz/reads/raw/Project_SN7001117R_0098_RSB_NAitken_GBS/Sample_Emeliodora_Blk1_4/Emeliodora_Blk1_4_NoIndex_L008_R1_001.fastq.gz
+file2=/home/gdu/projects/borevitz/reads/raw/Project_SN7001117R_0098_RSB_NAitken_GBS/Sample_Emeliodora_Blk1_4/Emeliodora_Blk1_4_NoIndex_L008_R2_001.fastq.gz
+
+#fastqc params
+fastqc_outdir=/borevitz/megan/emelliodora/qc/emel_lb1234
+
+#sequencing and sample information
+lane_name=Emel_lb1234
+barcode_file=Emelliodora_LB_Blocks1234_barcodes.tab
+
+#user group for output
+user=Eucalyptus
+
+#number of threads to use
+threads=11
+
+#path to data
+gbs_path="/borevitz/gbs/samples/"
+
+#trim length for denovo
+trimlen=88

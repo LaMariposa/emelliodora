@@ -1,0 +1,78 @@
+#!/bin/bash
+
+#gbs_filter_final.sge
+#sge submission script for final filtering of vcf for gbs data
+#M. Supple
+#last updated 30 August 2016
+
+#usage  
+#qsub gatk_filter_prelim.sge <vcf> <path/to/reference/ref.fa> <exhet> <ic> <mq> <mqrs> <qd> <maxmiss> <thin>
+	#<vcf> is an input vcf to be filtered
+	#<path/to/reference/ref.fa> is the reference sequence
+	#<exhet> is maximum value for gatk's ExcessHet (must be float)
+	#<ic> is the maximum positive value and minimum negative value for gatk's InbreedingCoeff (must be float)
+	#<mq> is the minimum value for gatk's MQ (must be float)
+	#<mqrs> is the maximum positive and minimum negative value for gatk's MQRankSum (must be float)
+	#<qd> is the minimum value for gatk's QD (must be float)
+	#<maxmiss> the maximum amount of missing data allowed per locus (0 allows no missing data, 1 keeps all loci) (float)
+	#<thin> is the minimum distance allowed between loci (integer)
+
+#requires 
+#gatk
+#vcftools
+
+#output
+#vcf with filtered SNPs
+
+
+
+#sge submission info
+#$ -N gbs_filter_final
+#$ -o gbs_filter_final.output
+#$ -l virtual_free=20g,h_vmem=20.1g
+#$ -cwd
+#$ -j y
+
+
+
+#print some sge info
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+#read in input
+vcf=$1
+reference=$2
+exhet=$3
+ic=$4
+mq=$5
+mqrs=$6
+qd=$7
+miss=`bc <<< 1-$8` #vcftools 0 keeps all, 1 no missing data
+thin=$9
+
+
+
+#filter with specified values
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+	-T VariantFiltration \
+	-R $reference \
+	-V $vcf \
+	-filter "ExcessHet > $exhet || InbreedingCoeff < -$ic || InbreedingCoeff > $ic || MQ < $mq || MQRankSum < -$mqrs || MQRankSum > $mqrs || QD < $qd" \
+	-filterName "mySNPfilter" \
+	-o ${vcf%.vcf}.filt2.vcf
+
+#remove failed loci from file
+java -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+       -T SelectVariants \
+       -R $reference \
+       -V ${vcf%.vcf}.filt2.vcf \
+	--excludeFiltered \
+       -o ${vcf%.vcf}.filt2.pass.vcf
+
+#remove loci with too much missing data and thin so loci not linked
+vcftools --vcf ${vcf%.vcf}.filt2.pass.vcf --recode --out final --max-missing $miss --thin $thin
+
+
+
+#print note that job completed
+echo done `date`
+

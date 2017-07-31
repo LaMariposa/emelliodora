@@ -1,0 +1,57 @@
+#!/bin/bash
+
+#prep_gbs_ref.sge
+#sge submission script to prepare already qc'd reads for alignment to the reference
+	#removes reads with improper restriction site
+	#removes samples with no data
+#M. Supple
+#last modified 8 August 2016
+
+#usage qsub stacks_final.sge <prep.input> <proper_read_start>
+#<prep.input>:  see prep.example.input or example at end of this script
+#<proper_read_start> is expected start of each read (PstI=TGCAG) 
+
+#requires
+
+#output
+#interleaved fastq file for each sample
+
+
+
+#$ -N prep_gbs_ref.sge
+#$ -o prep_gbs_ref.output
+#$ -l virtual_free=3g,h_vmem=3.1g
+#$ -j y
+#$ -cwd
+
+#print some useful sge information
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname` 
+
+#read in input
+source $1
+reseq=$2
+
+#get list of samples
+samples=($(ls $gbs_path/$user/$lane_name/qc/qc_S*_il.fastq.gz))
+
+#loop over each sample
+for ((a=0; a<${#samples[@]}; a++))
+	do
+		echo -e "processing sample ${samples[a]}"
+		#remove bad reads
+		remove_bad_restriction_sites.pl ${samples[a]} $reseq
+	done
+
+#remove samples with no data
+for fullfile in $( ls clean_*gz ); do
+        filename=$(basename "$fullfile")
+        filesize=$( stat -c%s $fullfile )
+        if [ "$filesize" -lt "21" ]; then
+   		rm $filename     
+ 		echo "$filename failed"
+        fi
+done
+
+
+#print note that job completed
+echo done `date`

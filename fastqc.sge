@@ -1,0 +1,50 @@
+#!/bin/bash
+
+#fastqc.sge
+#sge submission script to qc sequencing data using FastQC
+#M. Supple
+#31 March 2015
+
+#usage  
+#qsub fastqc.sge <prep.input>
+#<prep.input>:  see prep.example.input or example at end of this script
+
+#requires 
+#FastQC
+
+#output
+#FastQC directory for each fastq file
+
+
+
+#sge submission info
+#$ -N fastqc
+#$ -o fastqc.output
+#$ -pe threads 11
+#$ -l virtual_free=1.8g,h_vmem=1.9g
+#$ -cwd
+#$ -j y
+
+
+
+#print some sge info
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+#read the input file
+source $1
+
+#create the directory and run FastQC on each pair
+mkdir $fastqc_outdir
+fastqc --outdir $fastqc_outdir --nogroup --threads 11 $file1
+fastqc --outdir $fastqc_outdir --nogroup --threads 11 $file2
+
+#print note that job completed
+echo done `date`
+
+
+##example input file
+##input fastq files
+#file1=/PATH/TO/FASTQ/FILE/sample_R1_001.fastq.gz
+#file2=/PATH/TO/FASTQ/FILE/sample_R2_001.fastq.gz
+##fastqc params
+#fastqc_outdir=/PATH/TO/DIR/FOR/OUTPUT

@@ -1,0 +1,69 @@
+#!/bin/bash
+
+#prep_ref.sge
+#sge submission script to prepare the reference for BWA and GATK
+#M. Supple
+#last modified 8 August 2016
+
+#usage  
+#qsub fastqc.sge </path/to/ref> <reference.fasta>
+
+#requires 
+#bwa
+#picard-tools
+#samtools
+
+#output
+#creates various dictionaries in indexes
+
+
+
+#sge submission info
+#$ -N prep_ref
+#$ -o prep_ref.output
+#$ -l virtual_free=20g,h_vmem=20.1g
+#$ -cwd
+#$ -j y
+
+
+
+#print some sge info
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname`
+
+#read in input
+refpath=$1
+reference=$2
+file=${reference%.fa}
+file=${file%.fasta}
+echo $file
+
+
+#create bwa index
+if (test -e $refpath$reference.bwt)
+        then echo "skipping bwa indexing...already exists"
+        else echo "creating bwa index"
+                bwa index $refpath$reference
+fi
+
+
+#create picard dictionary for GATK
+if (test -e $refpath$file.dict)
+	then echo "skipping picard dictionary...already exists"
+	else echo "creating picard dictionary"
+		java -jar /home/msupple/programs/picard-tools-2.5.0/picard.jar CreateSequenceDictionary \
+			R=$refpath$reference \
+			O=$refpath$file.dict
+fi
+
+
+#create samtools index
+if (test -e $refpath$reference.fai)
+        then echo "skipping samtools indexing...already exists"
+        else echo "creating samtools index"
+		samtools faidx $refpath$reference
+fi
+
+
+#print note that job completed
+echo done `date`
+

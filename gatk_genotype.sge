@@ -1,0 +1,60 @@
+#!/bin/bash
+
+#gatk_genotype.sge
+#sge submission script to call joint genotypes across samples
+#M. Supple
+#last modified 9 August 2016
+
+#usage
+#qsub gatk_genotype.sge </path/to/gvcf/dir/> <path/to/reference/ref.fa>
+	#</path/to/bams/dir/> is a directory with the input g.vcf files
+	#<path/to/reference/ref.fa> is the reference sequence
+#note: see hardcoded parameters below
+
+#requires
+#gatk
+
+#output
+#single genotyped VCF
+
+
+#$ -N gatk_genotype
+#$ -o gatk_genotype.output
+#$ -q hugemem.q
+#$ -l virtual_free=220g,h_vmem=221g
+#$ -j y
+#$ -cwd
+
+#print some useful sge information
+echo Job $JOB_NAME started `date` in queue $QUEUE with id=$JOB_ID on `hostname` 
+
+#get input information
+gvcfdir=$1
+reference=$2
+
+het=0.005
+indelhet=.0005
+
+#determine samples to use
+variants=""
+samples=($(ls $gvcfdir/S*.g.vcf))
+for ((a=0; a<${#samples[@]}; a++))
+        do
+		variants+="--variant ${samples[a]} "
+	done
+	echo $variants
+
+#call variants
+java -Xmx150G -jar /home/msupple/programs/GenomeAnalysisTK.jar \
+	-T GenotypeGVCFs \
+	-hets $het -indelHeterozygosity $indelhet \
+	-R $reference \
+	$variants \
+	-o combined.vcf
+
+
+#print note that job completed
+echo done `date`
+
+
+
